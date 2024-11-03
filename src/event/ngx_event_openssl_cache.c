@@ -106,13 +106,15 @@ static void ngx_ssl_cache_node_insert(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 static void ngx_ssl_cache_node_free(ngx_rbtree_t *rbtree,
     ngx_ssl_cache_node_t *cn);
+static char *ssl_object_cache_inherit(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 
 
 static ngx_command_t  ngx_openssl_cache_commands[] = {
 
     { ngx_string("ssl_object_cache_inherit"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
+      ssl_object_cache_inherit,
       0,
       offsetof(ngx_ssl_cache_t, inherit),
       NULL },
@@ -232,8 +234,9 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
     /* try to use a reference from the old cycle */
 
     old_cache = ngx_ssl_cache_get_old_conf(cf->cycle);
+    ngx_conf_init_value(cache->inherit, 1);
 
-    if (old_cache && old_cache->inherit) {
+    if (old_cache && cache->inherit) {
         ocn = ngx_ssl_cache_lookup(old_cache, type, &id, hash);
 
         if (ocn != NULL) {
@@ -1109,4 +1112,21 @@ ngx_ssl_cache_node_insert(ngx_rbtree_node_t *temp,
     node->left = sentinel;
     node->right = sentinel;
     ngx_rbt_red(node);
+}
+
+
+static char *
+ssl_object_cache_inherit(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    ngx_flag_t       *fp;
+
+    fp = (ngx_flag_t *) (p + cmd->offset);
+
+    if (*fp != NGX_CONF_UNSET) {
+        return "is duplicate or must be set earlier in the configuration";
+    }
+
+    return ngx_conf_set_flag_slot(cf, cmd, conf);
 }
