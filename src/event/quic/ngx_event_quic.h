@@ -140,5 +140,6 @@ ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
     ngx_str_t *dcid);
 ngx_int_t ngx_quic_derive_key(ngx_log_t *log, const char *label,
     ngx_str_t *secret, ngx_str_t *salt, u_char *out, size_t len);
+ngx_int_t ngx_quic_cbs_init(ngx_conf_t *cf, SSL_CTX *ctx);
 
 #endif /* _NGX_EVENT_QUIC_H_INCLUDED_ */

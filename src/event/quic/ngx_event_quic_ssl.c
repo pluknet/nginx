@@ -32,6 +32,9 @@ static int ngx_quic_cbs_got_transport_params(ngx_ssl_conn_t *ssl_conn,
     const unsigned char *params, size_t params_len, void *arg);
 static int ngx_quic_cbs_alert(ngx_ssl_conn_t *ssl_conn, unsigned char alert,
     void *arg);
+static int ngx_quic_cbs_add_transport_params(SSL *ssl, unsigned int ext_type,
+    unsigned int context, const unsigned char **out, size_t *outlen, X509 *x,
+    size_t chainidx, int *al, void *add_arg);
 
 #else /* NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API */
 
@@ -978,3 +981,81 @@ ngx_quic_init_connection(ngx_connection_t *c)
 
     return NGX_OK;
 }
+
+
+#if (NGX_QUIC_OPENSSL_API)
+
+ngx_int_t
+ngx_quic_cbs_init(ngx_conf_t *cf, SSL_CTX *ctx)
+{
+    if (SSL_CTX_has_client_custom_ext(ctx,
+                                      TLSEXT_TYPE_quic_transport_parameters))
+    {
+        return NGX_OK;
+    }
+
+    if (SSL_CTX_add_custom_ext(ctx, TLSEXT_TYPE_quic_transport_parameters,
+                               SSL_EXT_CLIENT_HELLO
+                               |SSL_EXT_TLS1_3_ENCRYPTED_EXTENSIONS,
+                               ngx_quic_cbs_add_transport_params,
+                               NULL,
+                               NULL,
+                               NULL,
+                               NULL)
+        == 0)
+    {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "SSL_CTX_add_custom_ext() failed");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static int
+ngx_quic_cbs_add_transport_params(SSL *ssl, unsigned int ext_type,
+    unsigned int context, const unsigned char **out, size_t *outlen, X509 *x,
+    size_t chainidx, int *al, void *add_arg)
+{
+    u_char                 *p;
+    size_t                  clen;
+    ssize_t                 len;
+    ngx_connection_t       *c;
+    ngx_quic_connection_t  *qc;
+
+    c = ngx_ssl_get_connection(ssl);
+    if (c->type != SOCK_DGRAM) {
+        return 0;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic cbs add transport params");
+
+    qc = ngx_quic_get_connection(c);
+
+    len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp, &clen);
+    /* always succeeds */
+
+    p = ngx_pnalloc(c->pool, len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    len = ngx_quic_create_transport_params(p, p + len, &qc->tp, NULL);
+    if (len < 0) {
+        return NGX_ERROR;
+    }
+
+#ifdef NGX_QUIC_DEBUG_PACKETS
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic transport parameters len:%uz %*xs", len, len, p);
+#endif
+
+    *out = p;
+    *outlen = len;
+
+    return 1;
+}
+
+#endif
