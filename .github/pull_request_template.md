@@ -25,7 +25,7 @@ them here.
 
 Before submitting this PR, please confirm:
 
-- [ ] I have read the [CONTRIBUTING](/nginx/nginx/blob/master/CONTRIBUTING.md) guidelines
+- [ ] I have read the [CONTRIBUTING](https://github.com/nginx/nginx/blob/master/CONTRIBUTING.md) guidelines
 - [ ] I have added tests (if applicable) to validate my changes
 - [ ] All existing tests pass
 - [ ] I have updated documentation where necessary
