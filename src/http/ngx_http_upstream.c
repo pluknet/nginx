@@ -5129,7 +5129,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     start = h->value.data;
     last = start + h->value.len;
 
-    if (r->cache->valid_sec != 0 && u->headers_in.x_accel_expires != NULL) {
+    if (u->headers_in.accel_expires) {
         goto extensions;
     }
 
@@ -5340,6 +5340,7 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
             r->cache->valid_sec = ngx_time() + n;
             u->headers_in.no_cache = 0;
             u->headers_in.expired = 0;
+            u->headers_in.accel_expires = 1;
             return NGX_OK;
         }
     }
@@ -5353,6 +5354,7 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
         r->cache->valid_sec = n;
         u->headers_in.no_cache = 0;
         u->headers_in.expired = 0;
+        u->headers_in.accel_expires = 1;
     }
     }
 #endif
